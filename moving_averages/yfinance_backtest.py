@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns 
 import matplotlib.pyplot as plt 
 import numpy as np 
-import scipy.stats as norm
+from scipy.stats import norm
 
 class backtest_ma_yf():  
     #self --> maintain variables throughout the whole class (because usually, variables pertain only to the function in which it belons to)
@@ -94,7 +94,7 @@ class backtest_ma_yf():
             print("Ticker, signal, max returns, max loss, average returns, #in with neg returns, Prob Loss.")
             print(result_list)  
 
-            '''mu = self.ma['%Δ Daily ReturnsLAG1'].mean() 
+            mu = self.ma['%Δ Daily ReturnsLAG1'].mean() 
             sigma = self.ma['%Δ Daily ReturnsLAG1'].std(ddof=1) 
 
             def probability(lst): 
@@ -114,7 +114,7 @@ class backtest_ma_yf():
             gain_range = np.arange(1, 11, 1) 
             loss_range = np.arange(-10, 0, 1) 
             probability(loss_range)
-            probability(gain_range)'''
+            probability(gain_range)
 
     ## ---- PART 4: this function filters data by selecting only positive buy signals, and calculate max/min returns + probability that it buyers make a loss considering a one-day lag in price changes 
     def ma_single_strat_lag(self): 
@@ -159,7 +159,7 @@ class backtest_ma_yf():
             print("(LAG) Ticker, signal, max returns, max loss, average returns, #in with neg returns, Prob Loss.")
             print(result_list)
 
-            '''mu = self.ma['%Δ Daily ReturnsLAG2'].mean() 
+            mu = self.ma['%Δ Daily ReturnsLAG2'].mean() 
             sigma = self.ma['%Δ Daily ReturnsLAG2'].std(ddof=1) 
 
             def probability(lst): 
@@ -179,7 +179,7 @@ class backtest_ma_yf():
             gain_range = np.arange(1, 11, 1) 
             loss_range = np.arange(-10, 0, 1) 
             probability(loss_range)
-            probability(gain_range)'''
+            probability(gain_range)
 
 user_ticker=input('Ticker?: ')
 a = backtest_ma_yf(user_ticker) 
