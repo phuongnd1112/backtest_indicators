@@ -20,6 +20,9 @@ class backtest_indicator_moving_average():
 
         #dọn data / sort data
         self.data = self.data.rename(columns = {'openPriceAdjusted': 'Open', 'closePriceAdjusted':'Close'}) #đổi tên cột thành standardised tên (functionality --> nếu có tương tác với db khác ) // price = close 
+        self.data = self.data.sort_values('dateReport', ascending = True) 
+        self.data = self.data.reset_index(inplace=False) 
+        print(self.data)
 
         #tính daily returns / đánh dấu hiệu mua/bạn dựa theo giao động giá trong ngày 
         self.data['%Δ Daily Returns'] = (self.data['Close']/self.data['Close'].shift(1) - 1) #log return 
@@ -37,16 +40,21 @@ class backtest_indicator_moving_average():
         self.ma['MA50'] = self.data['Close'].rolling(50).mean()
         self.ma['MA100'] = self.data['Close'].rolling(100).mean()
 
-        self.ma = self.ma.dropna() #xoá na vì có một vài cell sẽ trả NaN do không đủ cell rolling để tính mean 
+        #self.ma = self.ma.dropna() #xoá na vì có một vài cell sẽ trả NaN do không đủ cell rolling để tính mean 
+        self.ma = self.ma.dropna() 
+        print(self.ma) 
+        print(max(self.ma.index))
+        print(min(self.ma.index))
 
         #đánh tín hiệu mua/bán dựa theo điểm cắt của các cặp MA/Giá khác nhau 
         #logic: 1 (mua) nếu MA(bé) cắt MA(lớn) giữa 2 phiên 
-        self.ma['Buy_MA20/Price'] = [1 if (self.ma.loc[i, 'MA20'] > self.ma.loc[i, 'Close']) and (self.ma.loc[i+1, 'MA20'] < self.ma.loc[i+1,'Close']) else -1 for i in self.ma.index] #MA20/Close 
+        self.ma['Buy_MA20/Price'] = [1 if (self.ma.loc[i-1, 'MA20'] > self.ma.loc[i-1, 'Close']) and (self.ma.loc[i, 'MA20'] < self.ma.loc[i, 'Close']) else -1 for i in self.ma.index] #MA50/MA20
 
         self.ma['Buy_MA50/MA20'] = [1 if (self.ma.loc[i, 'MA50'] > self.ma.loc[i, 'MA20']) and (self.ma.loc[i+1, 'MA50'] < self.ma.loc[i+1, 'MA20']) else -1 for i in self.ma.index] #MA50/MA20 
 
         self.ma['Buy_MA100/MA50'] = [1 if (self.ma.loc[i, 'MA100'] > self.ma.loc[i, 'MA50'] and (self.ma.loc[i+1, 'MA100']) < self.ma.loc[i+1, 'MA50']) else -1 for i in self.ma.index] #MA100/50
 
+        print(self.ma)
         #exploratory analysis shows that MA20/Price seems to be the strongest signal 
     
     ## ---- PART 3: Lọc data cho thấy duy nhất tín hiệu mua, tính khả năng lãi/lỗ tối thiếu + % lỗ (mặc dù tín hiệu báo mua) 
