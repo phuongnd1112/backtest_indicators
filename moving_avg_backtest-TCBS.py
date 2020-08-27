@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np 
 import seaborn as sns 
 import matplotlib.pyplot as plt 
+from scipy.stats import norm 
 
 #script viết thành class để tăng tính tương tác giữa ngừoi chạy và script 
 class backtest_indicator_moving_average(): 
@@ -18,10 +19,10 @@ class backtest_indicator_moving_average():
         self.data = tcbs_market.stock_prices([self.ticker], period=2000) #ticker chạy qua db của tcbs, lấy dữ liệu lịch sử 
 
         #dọn data / sort data
-        self.data = self.data.rename(columns = {'openPriceAdjusted': 'Open', 'closePriceAdjusted':'Price'}) #đổi tên cột thành standardised tên (functionality --> nếu có tương tác với db khác )
+        self.data = self.data.rename(columns = {'openPriceAdjusted': 'Open', 'closePriceAdjusted':'Close'}) #đổi tên cột thành standardised tên (functionality --> nếu có tương tác với db khác ) // price = close 
 
         #tính daily returns / đánh dấu hiệu mua/bạn dựa theo giao động giá trong ngày 
-        self.data['%Δ Daily Returns'] = (self.data['Price']/self.data['Price'].shift(1) - 1) #log return 
+        self.data['%Δ Daily Returns'] = (self.data['Close']/self.data['Close'].shift(1) - 1) #log return 
         self.data['DailyPriceSignal'] = [1 if self.data.loc[x, '%Δ Daily Returns'] > 0 else -1 for x in self.data.index] #1 là mua, -1 là bán 
 
     # ----- PART 2: MUA/BÁN THEO TÍN HIỆU MA  
@@ -29,18 +30,18 @@ class backtest_indicator_moving_average():
         self.ma = pd.DataFrame() #tạo df mới để xét dữ liệu dễ hơn
         self.ma['Date'] = self.data['dateReport'] #kéo dữ liệu từ df self.data sang bên self.ma 
         self.ma['%Δ Daily Returns'] = self.data['%Δ Daily Returns']
-        self.ma['Price'] = self.data['Price']
+        self.ma['Close'] = self.data['Close']
 
         #dùng method rolling and mean để tính moving averages 
-        self.ma['MA20'] = self.data['Price'].rolling(20).mean() 
-        self.ma['MA50'] = self.data['Price'].rolling(50).mean()
-        self.ma['MA100'] = self.data['Price'].rolling(100).mean()
+        self.ma['MA20'] = self.data['Close'].rolling(20).mean() 
+        self.ma['MA50'] = self.data['Close'].rolling(50).mean()
+        self.ma['MA100'] = self.data['Close'].rolling(100).mean()
 
         self.ma = self.ma.dropna() #xoá na vì có một vài cell sẽ trả NaN do không đủ cell rolling để tính mean 
 
         #đánh tín hiệu mua/bán dựa theo điểm cắt của các cặp MA/Giá khác nhau 
         #logic: 1 (mua) nếu MA(bé) cắt MA(lớn) giữa 2 phiên 
-        self.ma['Buy_MA20/Price'] = [1 if (self.ma.loc[i, 'MA20'] > self.ma.loc[i, 'Price']) and (self.ma.loc[i+1, 'MA20'] < self.ma.loc[i+1,'Price']) else -1 for i in self.ma.index] #MA20/Close 
+        self.ma['Buy_MA20/Price'] = [1 if (self.ma.loc[i, 'MA20'] > self.ma.loc[i, 'Close']) and (self.ma.loc[i+1, 'MA20'] < self.ma.loc[i+1,'Close']) else -1 for i in self.ma.index] #MA20/Close 
 
         self.ma['Buy_MA50/MA20'] = [1 if (self.ma.loc[i, 'MA50'] > self.ma.loc[i, 'MA20']) and (self.ma.loc[i+1, 'MA50'] < self.ma.loc[i+1, 'MA20']) else -1 for i in self.ma.index] #MA50/MA20 
 
@@ -88,12 +89,34 @@ class backtest_indicator_moving_average():
             result_list.append(neg_return_count)
 
             #sác xuất lỗ với tín hiệu mua 
-            loss_prob = neg_return_count / len(ma_single_strat['Price'].values.tolist())
+            loss_prob = neg_return_count / len(ma_single_strat['Close'].values.tolist())
             result_list.append(loss_prob)
 
             print("Ticker, tín hiệu báo, lãi max, max lỗ, return trung bình, số ngày lỗ, %lỗ.")
             print(result_list) 
 
+            #calculate probability bins 
+            mu = self.ma['%Δ Daily ReturnsLAG1'].mean() #mean 
+            sigma = self.ma['%Δ Daily ReturnsLAG1'].std(ddof=1) #standard deviation 
+
+            def probability(lst): 
+                likelihood = pd.DataFrame()
+                likelihood['Loss/Gain'] = lst 
+                likelihood = likelihood.set_index('Loss/Gain')
+                values_list = [] 
+                for i in lst: 
+                    value = norm.cdf((i/100), mu, sigma) 
+                    if i > 0: 
+                        value = 1 - value #because the PDF / CDF calculates the total area up to value, subtract from 1  
+                    values_list.append(value)
+                likelihood['%'] = values_list  
+                print(s)
+                print(likelihood) 
+            
+            gain_range = np.arange(1, 11, 1) 
+            loss_range = np.arange(-10, 0, 1) 
+            probability(loss_range)
+            probability(gain_range)
 
     def ma_single_strat_lag(self): 
         self.ma['%Δ Daily ReturnsLAG2'] = self.ma['%Δ Daily Returns'].shift(2) #vì khi tính tín hiệu, tín hiệu được đánh theo ngày hôm sau ([i+1]) --> shift một ngày để xem sác xuất trong phiên ĐÃ được tín hiệu báo 
@@ -131,11 +154,33 @@ class backtest_indicator_moving_average():
             result_list.append(neg_return_count)
 
             #sác xuất lỗ với tín hiệu mua 
-            loss_prob = neg_return_count / len(ma_single_strat['Price'].values.tolist())
+            loss_prob = neg_return_count / len(ma_single_strat['Close'].values.tolist())
             result_list.append(loss_prob)
 
             print("(LAG) Ticker, tín hiệu báo, lãi max, max lỗ, return trung bình, số ngày lỗ, %lỗ.")
             print(result_list) 
+
+            mu = self.ma['%Δ Daily ReturnsLAG2'].mean() 
+            sigma = self.ma['%Δ Daily ReturnsLAG2'].std(ddof=1) 
+
+            def probability(lst): 
+                likelihood = pd.DataFrame()
+                likelihood['Loss/Gain'] = lst 
+                likelihood = likelihood.set_index('Loss/Gain')
+                values_list = [] 
+                for i in lst: 
+                    value = norm.cdf((i/100), mu, sigma) 
+                    if i > 0: 
+                        value = 1 - value #because the PDF / CDF calculates the total area up to value, subtract from 1  
+                    values_list.append(value)
+                likelihood['%'] = values_list  
+                print(s)
+                print(likelihood) 
+            
+            gain_range = np.arange(1, 11, 1) 
+            loss_range = np.arange(-10, 0, 1) 
+            probability(loss_range)
+            probability(gain_range)
 
 new = backtest_indicator_moving_average() 
 new.clean_sort_data() 

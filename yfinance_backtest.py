@@ -89,6 +89,28 @@ class backtest_ma_yf():
             print("Ticker, signal, max returns, max loss, average returns, #in with neg returns, Prob Loss.")
             print(result_list)  
 
+            mu = self.ma['%Δ Daily ReturnsLAG1'].mean() 
+            sigma = self.ma['%Δ Daily ReturnsLAG1'].std(ddof=1) 
+
+            def probability(lst): 
+                likelihood = pd.DataFrame()
+                likelihood['Loss/Gain'] = lst 
+                likelihood = likelihood.set_index('Loss/Gain')
+                values_list = [] 
+                for i in lst: 
+                    value = norm.cdf((i/100), mu, sigma) 
+                    if i > 0: 
+                        value = 1 - value #because the PDF / CDF calculates the total area up to value, subtract from 1  
+                    values_list.append(value)
+                likelihood['%'] = values_list  
+                print(s)
+                print(likelihood) 
+            
+            gain_range = np.arange(1, 11, 1) 
+            loss_range = np.arange(-10, 0, 1) 
+            probability(loss_range)
+            probability(gain_range)
+
     ## ---- PART 4: this function filters data by selecting only positive buy signals, and calculate max/min returns + probability that it buyers make a loss considering a one-day lag in price changes 
     def ma_single_strat_lag(self): 
         self.ma['%Δ Daily ReturnsLAG2'] = self.ma['%Δ Daily Returns'].shift(2) #shift returns two day down because we've set signal as 'tomorrow' with [i+1] -- examine with some lagging factor
@@ -131,6 +153,28 @@ class backtest_ma_yf():
 
             print("(LAG) Ticker, signal, max returns, max loss, average returns, #in with neg returns, Prob Loss.")
             print(result_list)
+
+            mu = self.ma['%Δ Daily ReturnsLAG2'].mean() 
+            sigma = self.ma['%Δ Daily ReturnsLAG2'].std(ddof=1) 
+
+            def probability(lst): 
+                likelihood = pd.DataFrame()
+                likelihood['Loss/Gain'] = lst 
+                likelihood = likelihood.set_index('Loss/Gain')
+                values_list = [] 
+                for i in lst: 
+                    value = norm.cdf((i/100), mu, sigma) 
+                    if i > 0: 
+                        value = 1 - value #because the PDF / CDF calculates the total area up to value, subtract from 1  
+                    values_list.append(value)
+                likelihood['%'] = values_list  
+                print(s)
+                print(likelihood) 
+            
+            gain_range = np.arange(1, 11, 1) 
+            loss_range = np.arange(-10, 0, 1) 
+            probability(loss_range)
+            probability(gain_range)
 
 user_ticker=input('Ticker?: ')
 a = backtest_ma_yf(user_ticker) 
