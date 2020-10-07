@@ -26,15 +26,13 @@ class backtest_ma_yf():
         print(self.data) 
     
     ## ---- PART 2: this function calculates moving averages and set buy/sell signals
-    def calculate_moving_averages(self):  
+    def calculate_moving_averages(self, timeframe):  
         self.ma = pd.DataFrame() #create a new DataFrame for clarity purposes 
         self.ma['Date'] = self.data['Date'] #transferring data from self.data
         self.ma['Price'] = self.data['Close']
         self.ma['%Δ Daily Returns'] = self.data['%Δ Daily Returns']
-        self.ma['MA20'] = self.data['Close'].rolling(20).mean() #calculate moving averages by using .rolling(insert MA).mean() 
-        self.ma['MA50'] = self.data['Close'].rolling(50).mean()
-        self.ma['MA100'] = self.data['Close'].rolling(100).mean()
-
+        self.ma['MA'+timeframe] = self.data['Close'].rolling(timeframe).mean() #calculate moving averages by using .rolling(insert MA).mean() 
+       
         self.ma = self.ma.dropna() #some cells will return NaN value because of the rolling method. Delete these to avoid errors in further processing 
 
         print(self.ma) 
